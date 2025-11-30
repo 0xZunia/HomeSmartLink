@@ -1,5 +1,6 @@
 <img width="650" height="450" alt="image" src="https://github.com/user-attachments/assets/5d2e0578-9352-4eb6-9134-f03ff0cea22a" />
-<img width="650" height="450" alt="image" src="https://github.com/user-attachments/assets/fd0330e4-1737-44d0-a544-b63076d340f8" />
+<img width="650" height="450" alt="image" src="https://github.com/user-attachments/assets/cb065aea-b6ea-428d-90e5-8d9947dcaa51" />
+
 
 
 # HomeSmartLink
