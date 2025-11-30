@@ -13,6 +13,37 @@
 
 A web dashboard for monitoring and controlling Home SmartLink compatible heating devices. Built with Blazor and MudBlazor.
 
+## Download
+
+Download the latest version from the [Releases page](https://github.com/0xZunia/HomeSmartLink/releases).
+
+| Platform | File |
+|----------|------|
+| Windows | `HomeSmartLink-windows-x64.zip` |
+| macOS (Apple Silicon) | `HomeSmartLink-macos-arm64.zip` |
+| macOS (Intel) | `HomeSmartLink-macos-x64.zip` |
+| Linux | `HomeSmartLink-linux-x64.zip` |
+
+### Installation
+
+**Windows:**
+1. Download and extract `HomeSmartLink-windows-x64.zip`
+2. Run `HomeSmartLink.Web.exe`
+3. Open your browser at `http://localhost:5000`
+
+**macOS:**
+1. Download and extract the appropriate zip for your Mac
+2. Open Terminal and navigate to the extracted folder
+3. Run `chmod +x HomeSmartLink.Web` to make it executable
+4. Run `./HomeSmartLink.Web`
+5. Open your browser at `http://localhost:5000`
+
+**Linux:**
+1. Download and extract `HomeSmartLink-linux-x64.zip`
+2. Run `chmod +x HomeSmartLink.Web`
+3. Run `./HomeSmartLink.Web`
+4. Open your browser at `http://localhost:5000`
+
 ## Features
 
 - Real-time temperature monitoring for all rooms
