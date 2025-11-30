@@ -1,3 +1,7 @@
+<img width="650" height="450" alt="image" src="https://github.com/user-attachments/assets/5d2e0578-9352-4eb6-9134-f03ff0cea22a" />
+<img width="650" height="450" alt="image" src="https://github.com/user-attachments/assets/fd0330e4-1737-44d0-a544-b63076d340f8" />
+
+
 # HomeSmartLink
 
 ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)
