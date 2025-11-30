@@ -34,7 +34,6 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(HomeSmartLink.Web.Client._Imports).Assembly);
+    .AddInteractiveWebAssemblyRenderMode();
 
 app.Run();
