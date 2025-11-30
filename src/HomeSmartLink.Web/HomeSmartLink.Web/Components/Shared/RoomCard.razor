@@ -1,0 +1,88 @@
+@using HomeSmartLink.Application.Common.Models
+
+<MudPaper @onclick="OnClick" Elevation="0" Class="pa-3 mb-2"
+          Style="@GetRoomStyle()">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@Room.Name</MudText>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <MudChip T="string" Size="Size.Small" Color="@GetModeColor(Room.Settings.Mode)" Variant="Variant.Filled" Style="height: 24px;">
+                    @GetModeName(Room.Settings.Mode)
+                </MudChip>
+                @if (DeviceCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="@(HasLiveData ? Color.Success : Color.Default)" Variant="Variant.Outlined" Style="height: 24px;">
+                        @DeviceCount appareil(s)
+                    </MudChip>
+                }
+            </div>
+        </div>
+        <div style="text-align: right;">
+            @if (HasLiveData)
+            {
+                <MudText Typo="Typo.h5" Style="font-weight: 700; color: var(--mud-palette-primary);">@AverageTemperature.ToString("F1")°</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Consigne: @AverageSetpoint.ToString("F1")°</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@Room.Settings.StandardValue.ToString("F1")°</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Warning">Pas de donnees live</MudText>
+            }
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public RoomDto Room { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public bool HasLiveData { get; set; }
+
+    [Parameter]
+    public int DeviceCount { get; set; }
+
+    [Parameter]
+    public double AverageTemperature { get; set; }
+
+    [Parameter]
+    public double AverageSetpoint { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private string GetRoomStyle()
+    {
+        var baseStyle = "border-radius: 12px; cursor: pointer; transition: all 0.2s; ";
+
+        if (IsSelected)
+        {
+            return baseStyle + "background: rgba(79, 195, 247, 0.2); border-left: 3px solid #4fc3f7;";
+        }
+
+        return baseStyle + "background: var(--mud-palette-surface); border-left: 3px solid transparent;";
+    }
+
+    private string GetModeName(int mode) => mode switch
+    {
+        0 => "Auto",
+        1 => "Arret",
+        2 => "Hors-gel",
+        3 => "Manuel",
+        4 => "Programme",
+        _ => $"Mode {mode}"
+    };
+
+    private Color GetModeColor(int mode) => mode switch
+    {
+        0 => Color.Info,
+        1 => Color.Error,
+        2 => Color.Warning,
+        3 => Color.Primary,
+        4 => Color.Success,
+        _ => Color.Default
+    };
+}

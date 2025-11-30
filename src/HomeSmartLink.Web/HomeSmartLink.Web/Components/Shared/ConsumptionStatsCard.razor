@@ -1,0 +1,193 @@
+@using HomeSmartLink.Application.Common.Interfaces
+@inject ISmartLinkApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); border-radius: 12px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                <MudIcon Icon="@Icons.Material.Filled.LocalFireDepartment" Style="font-size: 24px; color: white;" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">Evaluation thermique</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Performance energetique</MudText>
+            </div>
+        </div>
+        @if (!_isLoading && _stars == null)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="CalculateConsumption">
+                Calculer
+            </MudButton>
+        }
+    </div>
+
+    @if (_requiresRegistration)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+            <MudText Typo="Typo.body2">
+                Cette fonctionnalite necessite une inscription Linky via l'application mobile SmartLink.
+            </MudText>
+        </MudAlert>
+    }
+    else if (_isLoading)
+    {
+        <div style="text-align: center; padding: 24px;">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Calcul en cours...</MudText>
+        </div>
+    }
+    else if (_stars.HasValue)
+    {
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            @* Stars Rating *@
+            <div style="text-align: center;">
+                <div style="display: flex; justify-content: center; gap: 4px;">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        var starIndex = i;
+                        <MudIcon Icon="@(starIndex <= _stars.Value ? Icons.Material.Filled.Star : Icons.Material.Outlined.Star)"
+                                 Color="@(starIndex <= _stars.Value ? Color.Warning : Color.Default)"
+                                 Size="Size.Large" />
+                    }
+                </div>
+                <MudText Typo="Typo.body1" Class="mt-2">@GetStarRatingText(_stars.Value)</MudText>
+            </div>
+
+            @* Input Summary *@
+            <MudDivider />
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div style="text-align: center;">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Surface</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@Area m2</MudText>
+                </div>
+                <div style="text-align: center;">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Consommation</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@Consumption kWh</MudText>
+                </div>
+                <div style="text-align: center;">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Temp. Eco</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@EcoSetpoint°C</MudText>
+                </div>
+                <div style="text-align: center;">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Temp. Confort</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@ComfortSetpoint°C</MudText>
+                </div>
+            </div>
+
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="Reset" FullWidth="true">
+                Recalculer
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        @* Input Form *@
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <MudNumericField T="int" @bind-Value="Area" Label="Surface (m2)" Variant="Variant.Outlined"
+                             Min="1" Max="1000" Step="10" />
+            <MudNumericField T="int" @bind-Value="Consumption" Label="Consommation annuelle (kWh)" Variant="Variant.Outlined"
+                             Min="0" Max="100000" Step="100" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <MudNumericField T="double" @bind-Value="EcoSetpoint" Label="Temp. Eco (°C)" Variant="Variant.Outlined"
+                                 Min="5" Max="25" Step="0.5" />
+                <MudNumericField T="double" @bind-Value="ComfortSetpoint" Label="Temp. Confort (°C)" Variant="Variant.Outlined"
+                                 Min="15" Max="30" Step="0.5" />
+            </div>
+            <MudTextField T="string" @bind-Value="ZipCode" Label="Code postal" Variant="Variant.Outlined"
+                          Placeholder="75001" MaxLength="5" />
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int Area { get; set; } = 50;
+
+    [Parameter]
+    public int Consumption { get; set; } = 5000;
+
+    [Parameter]
+    public double EcoSetpoint { get; set; } = 17.0;
+
+    [Parameter]
+    public double ComfortSetpoint { get; set; } = 20.0;
+
+    [Parameter]
+    public string ZipCode { get; set; } = "";
+
+    private bool _isLoading;
+    private int? _stars;
+    private bool _requiresRegistration;
+
+    private async Task CalculateConsumption()
+    {
+        if (string.IsNullOrWhiteSpace(ZipCode) || ZipCode.Length != 5)
+        {
+            Snackbar.Add("Veuillez entrer un code postal valide", Severity.Warning);
+            return;
+        }
+
+        if (Area <= 0)
+        {
+            Snackbar.Add("Veuillez entrer une surface valide", Severity.Warning);
+            return;
+        }
+
+        if (Consumption <= 0)
+        {
+            Snackbar.Add("Veuillez entrer une consommation valide", Severity.Warning);
+            return;
+        }
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.GetThermalEvaluationReportAsync(
+                Consumption, ZipCode, Area, EcoSetpoint, ComfortSetpoint);
+
+            if (result.IsSuccess)
+            {
+                _stars = result.Data;
+                Snackbar.Add("Evaluation calculee", Severity.Success);
+            }
+            else
+            {
+                // Parse status code from error message
+                if (result.StatusCode == 401 || (result.ErrorMessage?.Contains("401") ?? false))
+                {
+                    Snackbar.Add("Cette fonctionnalite necessite une inscription Linky/EDF dans l'application mobile.", Severity.Warning);
+                    _requiresRegistration = true;
+                }
+                else
+                {
+                    Snackbar.Add($"Erreur: {result.ErrorMessage}", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Reset()
+    {
+        _stars = null;
+    }
+
+    private string GetStarRatingText(int stars) => stars switch
+    {
+        1 => "Passoire thermique",
+        2 => "Peut mieux faire",
+        3 => "Correct",
+        4 => "Bon",
+        5 => "Excellent",
+        _ => "Non evalue"
+    };
+}

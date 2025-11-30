@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:HomeSmartLink.Mobile.ViewModels"
+             xmlns:models="clr-namespace:HomeSmartLink.Application.Common.Models;assembly=HomeSmartLink.Application"
+             x:Class="HomeSmartLink.Mobile.Views.DashboardPage"
+             x:DataType="viewmodels:DashboardViewModel"
+             NavigationPage.HasNavigationBar="False">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}"
+                 Command="{Binding RefreshCommand}"
+                 RefreshColor="{StaticResource Primary}">
+        <ScrollView>
+            <Grid BackgroundColor="{StaticResource Background}"
+                  Padding="20"
+                  RowSpacing="24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- ============================================ -->
+                <!-- HEADER -->
+                <!-- ============================================ -->
+                <Grid Grid.Row="0"
+                      Padding="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <VerticalStackLayout Grid.Column="0"
+                                         Spacing="4">
+                        <Label Text="Bienvenue"
+                               Style="{StaticResource Caption}"
+                               TextColor="{StaticResource TextMuted}" />
+                        <Label Text="{Binding HomeName}"
+                               Style="{StaticResource Headline}" />
+                    </VerticalStackLayout>
+
+                    <!-- Logout Button -->
+                    <Border Grid.Column="1"
+                            BackgroundColor="{StaticResource SurfaceVariant}"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            Padding="0"
+                            HeightRequest="48"
+                            WidthRequest="48"
+                            VerticalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding LogoutCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="OFF"
+                               FontSize="10"
+                               FontFamily="OpenSansSemibold"
+                               TextColor="{StaticResource TextSecondary}"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                </Grid>
+
+                <!-- ============================================ -->
+                <!-- MAIN TEMPERATURE DISPLAY -->
+                <!-- ============================================ -->
+                <Border Grid.Row="1"
+                        Style="{StaticResource CardElevated}"
+                        Padding="24">
+                    <Grid RowSpacing="16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Label Grid.Row="0"
+                               Text="TEMPERATURE MOYENNE"
+                               Style="{StaticResource Overline}" />
+
+                        <HorizontalStackLayout Grid.Row="1"
+                                               Spacing="4"
+                                               HorizontalOptions="Center">
+                            <Label Text="{Binding AverageTemperature, StringFormat='{0:F1}'}"
+                                   Style="{StaticResource Temperature}"
+                                   TextColor="{StaticResource TempComfort}" />
+                            <Label Text="°C"
+                                   Style="{StaticResource Title}"
+                                   TextColor="{StaticResource TextMuted}"
+                                   VerticalOptions="Start"
+                                   Margin="0,12,0,0" />
+                        </HorizontalStackLayout>
+
+                        <!-- Stats Row -->
+                        <Grid Grid.Row="2"
+                              ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Active Devices -->
+                            <VerticalStackLayout Grid.Column="0"
+                                                 HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="{Binding ActiveDevices}"
+                                       Style="{StaticResource StatValue}"
+                                       HorizontalTextAlignment="Center" />
+                                <Label Text="Actifs"
+                                       Style="{StaticResource Caption}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+
+                            <!-- Total Devices -->
+                            <VerticalStackLayout Grid.Column="1"
+                                                 HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <Label Text="{Binding TotalDevices}"
+                                       Style="{StaticResource StatValue}"
+                                       HorizontalTextAlignment="Center" />
+                                <Label Text="Appareils"
+                                       Style="{StaticResource Caption}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+
+                            <!-- Heating Hours -->
+                            <VerticalStackLayout Grid.Column="2"
+                                                 HorizontalOptions="Center"
+                                                 Spacing="4">
+                                <HorizontalStackLayout HorizontalOptions="Center">
+                                    <Label Text="{Binding TotalHeatingHours}"
+                                           Style="{StaticResource StatValue}" />
+                                    <Label Text="h"
+                                           Style="{StaticResource Body}"
+                                           TextColor="{StaticResource TextMuted}"
+                                           VerticalOptions="End"
+                                           Margin="2,0,0,4" />
+                                </HorizontalStackLayout>
+                                <Label Text="Chauffe"
+                                       Style="{StaticResource Caption}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- QUICK ACTIONS -->
+                <!-- ============================================ -->
+                <VerticalStackLayout Grid.Row="2"
+                                     Spacing="12">
+                    <Label Text="Actions rapides"
+                           Style="{StaticResource Title}" />
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Turn Off All -->
+                        <Border Grid.Column="0"
+                                BackgroundColor="{StaticResource ErrorBg}"
+                                StrokeShape="RoundRectangle 16"
+                                Stroke="{StaticResource Error}"
+                                StrokeThickness="1"
+                                Padding="16">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetAllRoomsModeCommand}"
+                                                      CommandParameter="1" />
+                            </Border.GestureRecognizers>
+                            <VerticalStackLayout Spacing="8"
+                                                 HorizontalOptions="Center">
+                                <Border BackgroundColor="{StaticResource Error}"
+                                        HeightRequest="40"
+                                        WidthRequest="40"
+                                        StrokeShape="RoundRectangle 20"
+                                        Stroke="Transparent"
+                                        HorizontalOptions="Center">
+                                    <Label Text="OFF"
+                                           FontSize="10"
+                                           FontFamily="OpenSansSemibold"
+                                           TextColor="{StaticResource TextPrimary}"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="Tout eteindre"
+                                       Style="{StaticResource Body}"
+                                       TextColor="{StaticResource ErrorLight}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Comfort Mode -->
+                        <Border Grid.Column="1"
+                                BackgroundColor="{StaticResource SuccessBg}"
+                                StrokeShape="RoundRectangle 16"
+                                Stroke="{StaticResource Success}"
+                                StrokeThickness="1"
+                                Padding="16">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SetAllRoomsModeCommand}"
+                                                      CommandParameter="0" />
+                            </Border.GestureRecognizers>
+                            <VerticalStackLayout Spacing="8"
+                                                 HorizontalOptions="Center">
+                                <Border BackgroundColor="{StaticResource Success}"
+                                        HeightRequest="40"
+                                        WidthRequest="40"
+                                        StrokeShape="RoundRectangle 20"
+                                        Stroke="Transparent"
+                                        HorizontalOptions="Center">
+                                    <Label Text="ON"
+                                           FontSize="11"
+                                           FontFamily="OpenSansSemibold"
+                                           TextColor="{StaticResource TextPrimary}"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="Mode Confort"
+                                       Style="{StaticResource Body}"
+                                       TextColor="{StaticResource SuccessLight}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!-- ============================================ -->
+                <!-- ROOMS HEADER -->
+                <!-- ============================================ -->
+                <HorizontalStackLayout Grid.Row="3"
+                                       Spacing="8">
+                    <Label Text="Mes pieces"
+                           Style="{StaticResource Title}"
+                           VerticalOptions="Center" />
+                    <Border BackgroundColor="{StaticResource PrimaryMuted}"
+                            StrokeShape="RoundRectangle 10"
+                            Stroke="Transparent"
+                            Padding="10,4"
+                            VerticalOptions="Center">
+                        <Label Text="{Binding Rooms.Count}"
+                               Style="{StaticResource Caption}"
+                               TextColor="{StaticResource PrimaryLight}" />
+                    </Border>
+                </HorizontalStackLayout>
+
+                <!-- ============================================ -->
+                <!-- ROOMS LIST -->
+                <!-- ============================================ -->
+                <CollectionView Grid.Row="4"
+                                ItemsSource="{Binding Rooms}"
+                                SelectionMode="None">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Vertical"
+                                           ItemSpacing="12" />
+                    </CollectionView.ItemsLayout>
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:RoomDto">
+                            <Border Style="{StaticResource Card}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:DashboardViewModel}}, Path=NavigateToRoomCommand}"
+                                                          CommandParameter="{Binding}" />
+                                </Border.GestureRecognizers>
+
+                                <Grid ColumnSpacing="16"
+                                      RowSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Room Name -->
+                                    <Label Grid.Row="0"
+                                           Grid.Column="0"
+                                           Text="{Binding Name}"
+                                           Style="{StaticResource Subtitle}"
+                                           TextColor="{StaticResource TextPrimary}" />
+
+                                    <!-- Temperature -->
+                                    <HorizontalStackLayout Grid.Row="0"
+                                                           Grid.Column="1"
+                                                           Spacing="2"
+                                                           VerticalOptions="Center">
+                                        <Label Text="{Binding AverageTemperature, StringFormat='{0:F1}'}"
+                                               Style="{StaticResource TemperatureSmall}"
+                                               TextColor="{StaticResource TempComfort}" />
+                                        <Label Text="°"
+                                               Style="{StaticResource Body}"
+                                               TextColor="{StaticResource TextMuted}"
+                                               VerticalOptions="Start" />
+                                    </HorizontalStackLayout>
+
+                                    <!-- Room Info -->
+                                    <HorizontalStackLayout Grid.Row="1"
+                                                           Grid.Column="0"
+                                                           Spacing="16">
+                                        <Label Text="{Binding Devices.Count, StringFormat='{0} appareil(s)'}"
+                                               Style="{StaticResource Caption}" />
+                                        <Label Text="{Binding AverageSetpoint, StringFormat='Consigne: {0:F1}°C'}"
+                                               Style="{StaticResource Caption}" />
+                                    </HorizontalStackLayout>
+
+                                    <!-- Arrow -->
+                                    <Label Grid.Row="1"
+                                           Grid.Column="1"
+                                           Text="→"
+                                           Style="{StaticResource Body}"
+                                           TextColor="{StaticResource TextMuted}"
+                                           VerticalOptions="Center"
+                                           HorizontalOptions="End" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+
+                    <CollectionView.EmptyView>
+                        <Border Style="{StaticResource Card}"
+                                Margin="0,20">
+                            <VerticalStackLayout Spacing="16"
+                                                 HorizontalOptions="Center"
+                                                 Padding="20">
+                                <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                        HeightRequest="64"
+                                        WidthRequest="64"
+                                        StrokeShape="RoundRectangle 32"
+                                        Stroke="Transparent"
+                                        HorizontalOptions="Center">
+                                    <Label Text="?"
+                                           FontSize="28"
+                                           FontFamily="OpenSansSemibold"
+                                           TextColor="{StaticResource TextMuted}"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="Aucune piece trouvee"
+                                       Style="{StaticResource Subtitle}"
+                                       HorizontalTextAlignment="Center" />
+                                <Label Text="Tirez vers le bas pour actualiser"
+                                       Style="{StaticResource Caption}"
+                                       HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <!-- ============================================ -->
+                <!-- LOADING OVERLAY -->
+                <!-- ============================================ -->
+                <Border Grid.RowSpan="5"
+                        BackgroundColor="#CC000000"
+                        StrokeThickness="0"
+                        IsVisible="{Binding IsBusy}">
+                    <VerticalStackLayout VerticalOptions="Center"
+                                         HorizontalOptions="Center"
+                                         Spacing="16">
+                        <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                           HeightRequest="48"
+                                           WidthRequest="48" />
+                        <Label Text="Chargement..."
+                               Style="{StaticResource Body}"
+                               TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

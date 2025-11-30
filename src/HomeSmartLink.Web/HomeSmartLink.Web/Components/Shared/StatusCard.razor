@@ -1,0 +1,40 @@
+<MudPaper Elevation="2" Class="pa-3 pa-sm-4" Style="border-radius: 12px;">
+    <div class="status-card-content">
+        <div class="status-card-icon" style="background: linear-gradient(135deg, @GradientStart 0%, @GradientEnd 100%);">
+            <MudIcon Icon="@Icon" Style="font-size: 28px; color: white;" />
+        </div>
+        <div style="min-width: 0; flex: 1;">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Title</MudText>
+            <MudText Typo="Typo.subtitle1" Style="@($"font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {(ValueColor != null ? $"color: {ValueColor};" : "")}")">
+                @Value
+            </MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Subtitle</MudText>
+            }
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Icon { get; set; } = Icons.Material.Filled.Info;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Value { get; set; } = "";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string GradientStart { get; set; } = "#4fc3f7";
+
+    [Parameter]
+    public string GradientEnd { get; set; } = "#0288d1";
+
+    [Parameter]
+    public string? ValueColor { get; set; }
+}

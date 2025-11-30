@@ -1,0 +1,71 @@
+@using HomeSmartLink.Application.Common.Models
+
+<MudPaper Elevation="1" Class="pa-3 mb-2" Style="border-radius: 8px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <MudText Typo="Typo.body2">Appareil @Device.Position</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Mode: @GetModeName(Device.Mode) | @GetHeatingStateText()
+            </MudText>
+        </div>
+        <div style="text-align: right;">
+            <MudText Typo="Typo.body1" Style="font-weight: 600;">@Device.Ambient.ToString("F1")°C</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Consigne @Device.Setpoint.ToString("F1")°C</MudText>
+        </div>
+    </div>
+
+    @if (ShowStats && (Device.DailyHours > 0 || Device.WeeklyHours > 0))
+    {
+        <MudDivider Class="my-2" />
+        <div style="display: flex; gap: 16px; justify-content: space-around;">
+            <div style="text-align: center;">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Aujourd'hui</MudText>
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@Device.DailyHours h</MudText>
+            </div>
+            <div style="text-align: center;">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Semaine</MudText>
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@Device.WeeklyHours h</MudText>
+            </div>
+            <div style="text-align: center;">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Annee</MudText>
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@Device.YearlyHours h</MudText>
+            </div>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public DeviceDataDto Device { get; set; } = null!;
+
+    [Parameter]
+    public bool ShowStats { get; set; } = true;
+
+    private string GetModeName(int mode) => mode switch
+    {
+        0 => "Auto",
+        1 => "Arret",
+        2 => "Hors-gel",
+        3 => "Manuel",
+        4 => "Programme",
+        _ => $"Mode {mode}"
+    };
+
+    private string GetHeatingStateText()
+    {
+        if (Device.Mode == 1)
+            return "Arret";
+
+        if (Device.Mode == 2)
+            return "Hors-gel";
+
+        var tempDiff = Device.Setpoint - Device.Ambient;
+
+        if (tempDiff > 0.5)
+            return $"En chauffe (+{tempDiff:F1}°)";
+        else if (tempDiff > 0)
+            return "Maintien";
+        else
+            return "Temperature atteinte";
+    }
+}

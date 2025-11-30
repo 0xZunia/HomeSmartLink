@@ -1,0 +1,82 @@
+@using HomeSmartLink.Application.Common.Models
+
+<MudPaper Elevation="1" Class="pa-4" Style="border-radius: 12px;">
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3">Heures de chauffe</MudText>
+
+    @if (Devices.Any())
+    {
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            @* Daily Stats *@
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <MudText Typo="Typo.body2">Aujourd'hui</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@TotalDailyHours h</MudText>
+                </div>
+                <MudProgressLinear Value="@DailyProgress" Color="Color.Primary" Rounded="true" Size="Size.Medium" />
+            </div>
+
+            @* Weekly Stats *@
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <MudText Typo="Typo.body2">Cette semaine</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@TotalWeeklyHours h</MudText>
+                </div>
+                <MudProgressLinear Value="@WeeklyProgress" Color="Color.Info" Rounded="true" Size="Size.Medium" />
+            </div>
+
+            @* Yearly Stats *@
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <MudText Typo="Typo.body2">Cette annee</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@TotalYearlyHours h</MudText>
+                </div>
+                <MudProgressLinear Value="@YearlyProgress" Color="Color.Success" Rounded="true" Size="Size.Medium" />
+            </div>
+
+            @* Per-device breakdown *@
+            @if (ShowDeviceBreakdown && Devices.Count > 1)
+            {
+                <MudDivider Class="my-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">Par appareil (aujourd'hui)</MudText>
+                @foreach (var device in Devices.OrderByDescending(d => d.DailyHours))
+                {
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <MudText Typo="Typo.caption" Style="width: 80px;">Appareil @device.Position</MudText>
+                        <MudProgressLinear Value="@GetDeviceProgress(device.DailyHours)" Color="Color.Primary" Rounded="true" Size="Size.Small" Style="flex: 1;" />
+                        <MudText Typo="Typo.caption" Style="width: 40px; text-align: right;">@device.DailyHours h</MudText>
+                    </div>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div style="text-align: center; padding: 16px;">
+            <MudIcon Icon="@Icons.Material.Outlined.BarChart" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Aucune donnee disponible</MudText>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public List<DeviceDataDto> Devices { get; set; } = [];
+
+    [Parameter]
+    public bool ShowDeviceBreakdown { get; set; } = true;
+
+    private int TotalDailyHours => Devices.Sum(d => d.DailyHours);
+    private int TotalWeeklyHours => Devices.Sum(d => d.WeeklyHours);
+    private int TotalYearlyHours => Devices.Sum(d => d.YearlyHours);
+
+    // Progress as percentage (assuming max 24h/day, 168h/week, 8760h/year)
+    private double DailyProgress => Math.Min(100, TotalDailyHours / 24.0 * 100);
+    private double WeeklyProgress => Math.Min(100, TotalWeeklyHours / 168.0 * 100);
+    private double YearlyProgress => Math.Min(100, TotalYearlyHours / 8760.0 * 100);
+
+    private double GetDeviceProgress(int hours)
+    {
+        var maxHours = Devices.Max(d => d.DailyHours);
+        return maxHours > 0 ? (double)hours / maxHours * 100 : 0;
+    }
+}

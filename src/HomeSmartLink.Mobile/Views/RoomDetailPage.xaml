@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:HomeSmartLink.Mobile.ViewModels"
+             xmlns:models="clr-namespace:HomeSmartLink.Application.Common.Models;assembly=HomeSmartLink.Application"
+             x:Class="HomeSmartLink.Mobile.Views.RoomDetailPage"
+             x:DataType="viewmodels:RoomDetailViewModel"
+             NavigationPage.HasNavigationBar="False">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}"
+                 Command="{Binding RefreshCommand}"
+                 RefreshColor="{StaticResource Primary}">
+        <ScrollView>
+            <Grid BackgroundColor="{StaticResource Background}"
+                  Padding="20"
+                  RowSpacing="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- ============================================ -->
+                <!-- HEADER -->
+                <!-- ============================================ -->
+                <Grid Grid.Row="0"
+                      Padding="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Back Button -->
+                    <Border Grid.Column="0"
+                            BackgroundColor="{StaticResource SurfaceVariant}"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            Padding="0"
+                            HeightRequest="48"
+                            WidthRequest="48"
+                            VerticalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding GoBackCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="‹"
+                               FontSize="28"
+                               TextColor="{StaticResource TextSecondary}"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Title -->
+                    <VerticalStackLayout Grid.Column="1"
+                                         Spacing="2"
+                                         Margin="16,0"
+                                         VerticalOptions="Center">
+                        <Label Text="{Binding Title}"
+                               Style="{StaticResource Title}"
+                               LineBreakMode="TailTruncation" />
+                        <HorizontalStackLayout Spacing="6">
+                            <Border BackgroundColor="{Binding HeatingStatusColor}"
+                                    HeightRequest="8"
+                                    WidthRequest="8"
+                                    StrokeShape="RoundRectangle 4"
+                                    Stroke="Transparent"
+                                    VerticalOptions="Center" />
+                            <Label Text="{Binding HeatingStatus}"
+                                   Style="{StaticResource Caption}"
+                                   TextColor="{Binding HeatingStatusColor}" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Refresh Button -->
+                    <Border Grid.Column="2"
+                            BackgroundColor="{StaticResource SurfaceVariant}"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            Padding="0"
+                            HeightRequest="48"
+                            WidthRequest="48"
+                            VerticalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding RefreshCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="↻"
+                               FontSize="22"
+                               TextColor="{StaticResource TextSecondary}"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                </Grid>
+
+                <!-- ============================================ -->
+                <!-- MAIN TEMPERATURE DISPLAY -->
+                <!-- ============================================ -->
+                <Border Grid.Row="1"
+                        Style="{StaticResource CardElevated}"
+                        Padding="24">
+                    <Grid RowSpacing="16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Label Grid.Row="0"
+                               Text="TEMPERATURE ACTUELLE"
+                               Style="{StaticResource Overline}"
+                               HorizontalTextAlignment="Center" />
+
+                        <HorizontalStackLayout Grid.Row="1"
+                                               Spacing="4"
+                                               HorizontalOptions="Center">
+                            <Label Text="{Binding AverageTemperature, StringFormat='{0:F1}'}"
+                                   Style="{StaticResource Temperature}"
+                                   TextColor="{StaticResource TempComfort}" />
+                            <Label Text="°C"
+                                   Style="{StaticResource Title}"
+                                   TextColor="{StaticResource TextMuted}"
+                                   VerticalOptions="Start"
+                                   Margin="0,12,0,0" />
+                        </HorizontalStackLayout>
+
+                        <!-- Setpoint Display -->
+                        <Border Grid.Row="2"
+                                BackgroundColor="{StaticResource SurfaceVariant}"
+                                StrokeShape="RoundRectangle 12"
+                                Stroke="Transparent"
+                                Padding="16,12"
+                                HorizontalOptions="Center">
+                            <HorizontalStackLayout Spacing="8">
+                                <Label Text="Consigne:"
+                                       Style="{StaticResource Body}"
+                                       TextColor="{StaticResource TextMuted}"
+                                       VerticalOptions="Center" />
+                                <Label Text="{Binding AverageSetpoint, StringFormat='{0:F1}°C'}"
+                                       Style="{StaticResource Subtitle}"
+                                       FontFamily="OpenSansSemibold"
+                                       TextColor="{StaticResource PrimaryLight}"
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- MODE SELECTION -->
+                <!-- ============================================ -->
+                <Border Grid.Row="2"
+                        Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="16">
+                        <Label Text="Mode de fonctionnement"
+                               Style="{StaticResource Title}" />
+
+                        <Grid ColumnSpacing="10"
+                              RowSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Auto Mode -->
+                            <Border Grid.Column="0"
+                                    Grid.Row="0"
+                                    BackgroundColor="{Binding SelectedMode, Converter={StaticResource ModeToColorConverter}, ConverterParameter=0}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource BorderColor}"
+                                    StrokeThickness="1"
+                                    Padding="12,16">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetModeCommand}"
+                                                          CommandParameter="0" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Auto"
+                                       Style="{StaticResource Body}"
+                                       FontFamily="OpenSansSemibold"
+                                       HorizontalTextAlignment="Center" />
+                            </Border>
+
+                            <!-- Off Mode -->
+                            <Border Grid.Column="1"
+                                    Grid.Row="0"
+                                    BackgroundColor="{Binding SelectedMode, Converter={StaticResource ModeToColorConverter}, ConverterParameter=1}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource BorderColor}"
+                                    StrokeThickness="1"
+                                    Padding="12,16">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetModeCommand}"
+                                                          CommandParameter="1" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Arret"
+                                       Style="{StaticResource Body}"
+                                       FontFamily="OpenSansSemibold"
+                                       HorizontalTextAlignment="Center" />
+                            </Border>
+
+                            <!-- Frost Protection Mode -->
+                            <Border Grid.Column="2"
+                                    Grid.Row="0"
+                                    BackgroundColor="{Binding SelectedMode, Converter={StaticResource ModeToColorConverter}, ConverterParameter=2}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource BorderColor}"
+                                    StrokeThickness="1"
+                                    Padding="12,16">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetModeCommand}"
+                                                          CommandParameter="2" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Hors-gel"
+                                       Style="{StaticResource Body}"
+                                       FontFamily="OpenSansSemibold"
+                                       HorizontalTextAlignment="Center" />
+                            </Border>
+
+                            <!-- Manual Mode -->
+                            <Border Grid.Column="0"
+                                    Grid.Row="1"
+                                    BackgroundColor="{Binding SelectedMode, Converter={StaticResource ModeToColorConverter}, ConverterParameter=3}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource BorderColor}"
+                                    StrokeThickness="1"
+                                    Padding="12,16">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetModeCommand}"
+                                                          CommandParameter="3" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Manuel"
+                                       Style="{StaticResource Body}"
+                                       FontFamily="OpenSansSemibold"
+                                       HorizontalTextAlignment="Center" />
+                            </Border>
+
+                            <!-- Program Mode -->
+                            <Border Grid.Column="1"
+                                    Grid.Row="1"
+                                    Grid.ColumnSpan="2"
+                                    BackgroundColor="{Binding SelectedMode, Converter={StaticResource ModeToColorConverter}, ConverterParameter=4}"
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource BorderColor}"
+                                    StrokeThickness="1"
+                                    Padding="12,16">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding SetModeCommand}"
+                                                          CommandParameter="4" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Programme"
+                                       Style="{StaticResource Body}"
+                                       FontFamily="OpenSansSemibold"
+                                       HorizontalTextAlignment="Center" />
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- MANUAL TEMPERATURE CONTROL -->
+                <!-- ============================================ -->
+                <Border Grid.Row="3"
+                        Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="20">
+                        <Label Text="Temperature manuelle"
+                               Style="{StaticResource Title}" />
+
+                        <!-- Temperature Value Display -->
+                        <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                StrokeShape="RoundRectangle 16"
+                                Stroke="Transparent"
+                                Padding="24,16"
+                                HorizontalOptions="Center">
+                            <HorizontalStackLayout Spacing="4">
+                                <Label Text="{Binding ManualSetpoint, StringFormat='{0:F1}'}"
+                                       Style="{StaticResource DisplayMedium}"
+                                       TextColor="{StaticResource Primary}" />
+                                <Label Text="°C"
+                                       Style="{StaticResource Title}"
+                                       TextColor="{StaticResource TextMuted}"
+                                       VerticalOptions="Start"
+                                       Margin="0,8,0,0" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- Slider -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Grid.Column="0"
+                                   Text="5°"
+                                   Style="{StaticResource Caption}"
+                                   VerticalOptions="Center" />
+
+                            <Slider Grid.Column="1"
+                                    Minimum="5"
+                                    Maximum="30"
+                                    Value="{Binding ManualSetpoint}"
+                                    Margin="12,0" />
+
+                            <Label Grid.Column="2"
+                                   Text="30°"
+                                   Style="{StaticResource Caption}"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <Button Text="Appliquer la temperature"
+                                Command="{Binding SetManualTemperatureCommand}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- ECO / COMFORT SETPOINTS -->
+                <!-- ============================================ -->
+                <Border Grid.Row="4"
+                        Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="20">
+                        <Label Text="Temperatures programmees"
+                               Style="{StaticResource Title}" />
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Eco Temperature -->
+                            <Border Grid.Column="0"
+                                    BackgroundColor="{StaticResource InfoBg}"
+                                    StrokeShape="RoundRectangle 16"
+                                    Stroke="{StaticResource Info}"
+                                    StrokeThickness="1"
+                                    Padding="16">
+                                <VerticalStackLayout Spacing="12">
+                                    <Label Text="ECO"
+                                           Style="{StaticResource Overline}"
+                                           TextColor="{StaticResource InfoLight}"
+                                           HorizontalTextAlignment="Center" />
+
+                                    <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                            StrokeShape="RoundRectangle 10"
+                                            Stroke="Transparent"
+                                            Padding="12,8">
+                                        <Entry Text="{Binding EcoSetpoint}"
+                                               Keyboard="Numeric"
+                                               HorizontalTextAlignment="Center"
+                                               BackgroundColor="Transparent"
+                                               FontSize="18"
+                                               FontFamily="OpenSansSemibold" />
+                                    </Border>
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <!-- Comfort Temperature -->
+                            <Border Grid.Column="1"
+                                    BackgroundColor="{StaticResource SuccessBg}"
+                                    StrokeShape="RoundRectangle 16"
+                                    Stroke="{StaticResource Success}"
+                                    StrokeThickness="1"
+                                    Padding="16">
+                                <VerticalStackLayout Spacing="12">
+                                    <Label Text="CONFORT"
+                                           Style="{StaticResource Overline}"
+                                           TextColor="{StaticResource SuccessLight}"
+                                           HorizontalTextAlignment="Center" />
+
+                                    <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                            StrokeShape="RoundRectangle 10"
+                                            Stroke="Transparent"
+                                            Padding="12,8">
+                                        <Entry Text="{Binding ComfortSetpoint}"
+                                               Keyboard="Numeric"
+                                               HorizontalTextAlignment="Center"
+                                               BackgroundColor="Transparent"
+                                               FontSize="18"
+                                               FontFamily="OpenSansSemibold" />
+                                    </Border>
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+
+                        <Button Text="Enregistrer les temperatures"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding SetEcoComfortTemperaturesCommand}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- DEVICES LIST -->
+                <!-- ============================================ -->
+                <Border Grid.Row="5"
+                        Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="16">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="Appareils"
+                                   Style="{StaticResource Title}"
+                                   VerticalOptions="Center" />
+                            <Border BackgroundColor="{StaticResource PrimaryMuted}"
+                                    StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    Padding="10,4"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding Devices.Count}"
+                                       Style="{StaticResource Caption}"
+                                       TextColor="{StaticResource PrimaryLight}" />
+                            </Border>
+                        </HorizontalStackLayout>
+
+                        <CollectionView ItemsSource="{Binding Devices}"
+                                        SelectionMode="None">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout Orientation="Vertical"
+                                                   ItemSpacing="10" />
+                            </CollectionView.ItemsLayout>
+
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:DeviceDataDto">
+                                    <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                            StrokeShape="RoundRectangle 14"
+                                            Stroke="{StaticResource BorderColor}"
+                                            StrokeThickness="1"
+                                            Padding="16">
+                                        <Grid ColumnSpacing="16"
+                                              RowSpacing="4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Device Name -->
+                                            <Label Grid.Column="0"
+                                                   Grid.Row="0"
+                                                   Text="{Binding Position, StringFormat='Appareil {0}'}"
+                                                   Style="{StaticResource Subtitle}"
+                                                   FontFamily="OpenSansSemibold"
+                                                   TextColor="{StaticResource TextPrimary}" />
+
+                                            <!-- Heating Hours -->
+                                            <Label Grid.Column="0"
+                                                   Grid.Row="1"
+                                                   Text="{Binding DailyHours, StringFormat='Chauffe: {0}h aujourd\u0027hui'}"
+                                                   Style="{StaticResource Caption}" />
+
+                                            <!-- Temperature -->
+                                            <HorizontalStackLayout Grid.Column="1"
+                                                                   Grid.Row="0"
+                                                                   Spacing="2"
+                                                                   VerticalOptions="Center"
+                                                                   HorizontalOptions="End">
+                                                <Label Text="{Binding Ambient, StringFormat='{0:F1}'}"
+                                                       Style="{StaticResource TemperatureSmall}"
+                                                       FontSize="24"
+                                                       TextColor="{StaticResource TempComfort}" />
+                                                <Label Text="°"
+                                                       Style="{StaticResource Body}"
+                                                       TextColor="{StaticResource TextMuted}"
+                                                       VerticalOptions="Start" />
+                                            </HorizontalStackLayout>
+
+                                            <!-- Setpoint -->
+                                            <Label Grid.Column="1"
+                                                   Grid.Row="1"
+                                                   Text="{Binding Setpoint, StringFormat='Consigne: {0:F1}°C'}"
+                                                   Style="{StaticResource Caption}"
+                                                   TextColor="{StaticResource TextMuted}"
+                                                   HorizontalOptions="End" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+
+                            <CollectionView.EmptyView>
+                                <VerticalStackLayout Spacing="12"
+                                                     HorizontalOptions="Center"
+                                                     Padding="20">
+                                    <Border BackgroundColor="{StaticResource SurfaceVariant}"
+                                            HeightRequest="48"
+                                            WidthRequest="48"
+                                            StrokeShape="RoundRectangle 24"
+                                            Stroke="Transparent"
+                                            HorizontalOptions="Center">
+                                        <Label Text="—"
+                                               FontSize="20"
+                                               TextColor="{StaticResource TextMuted}"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="Aucun appareil"
+                                           Style="{StaticResource Subtitle}"
+                                           HorizontalTextAlignment="Center" />
+                                </VerticalStackLayout>
+                            </CollectionView.EmptyView>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============================================ -->
+                <!-- LOADING OVERLAY -->
+                <!-- ============================================ -->
+                <Border Grid.RowSpan="6"
+                        BackgroundColor="#CC000000"
+                        StrokeThickness="0"
+                        IsVisible="{Binding IsBusy}">
+                    <VerticalStackLayout VerticalOptions="Center"
+                                         HorizontalOptions="Center"
+                                         Spacing="16">
+                        <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                           HeightRequest="48"
+                                           WidthRequest="48" />
+                        <Label Text="Chargement..."
+                               Style="{StaticResource Body}"
+                               TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

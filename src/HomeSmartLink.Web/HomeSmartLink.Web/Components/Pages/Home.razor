@@ -1,0 +1,1422 @@
+@page "/"
+@using HomeSmartLink.Application.Common.Interfaces
+@using HomeSmartLink.Application.Common.Models
+@inject ISmartLinkApiClient ApiClient
+@inject IAuthenticationService AuthService
+@inject ISessionStorage SessionStorage
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Home SmartLink</PageTitle>
+
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudAppBar Elevation="2" Fixed="true" Dense="true" Style="background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);">
+    <MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Medium" Class="mr-3" Style="color: #4fc3f7;" />
+    <MudText Typo="Typo.h6" Style="font-weight: 600;">Home SmartLink</MudText>
+    <MudSpacer />
+
+    @if (IsAuthenticated && _currentHome != null)
+    {
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Class="mx-1">
+            @_currentHome.Location?.Locality
+        </MudChip>
+    }
+
+    @if (IsAuthenticated && _ecowattData != null)
+    {
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetEcowattColor(_ecowattLevel)" Class="mx-1">
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Size="Size.Small" Class="mr-1" />
+            EcoWatt: @_ecowattMessage
+        </MudChip>
+    }
+
+    <MudDivider Vertical="true" FlexItem="true" Class="mx-3" />
+
+    @if (IsAuthenticated)
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+            Connecte
+        </MudChip>
+        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Error" Size="Size.Small"
+                       OnClick="SignOut" Class="ml-2" />
+    }
+    else
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">
+            Deconnecte
+        </MudChip>
+    }
+
+    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                   Color="Color.Inherit" OnClick="ToggleTheme" Class="ml-2" />
+</MudAppBar>
+
+<div style="padding-top: 48px; padding-bottom: 40px; height: 100vh; overflow: hidden; background: var(--mud-palette-background);">
+    @if (!IsAuthenticated)
+    {
+        @* Login Screen *@
+        <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+            <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 16px; max-width: 500px; width: 100%;">
+                <div style="text-align: center;">
+                    <div style="background: linear-gradient(135deg, #4fc3f7 0%, #0d47a1 100%); border-radius: 50%; width: 100px; height: 100px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
+                        <MudIcon Icon="@Icons.Material.Filled.Home" Style="font-size: 48px; color: white;" />
+                    </div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 700;" Class="mb-2">Home SmartLink</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+                        Controlez votre maison connectee
+                    </MudText>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_errorMessage</MudAlert>
+                }
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <MudTextField @bind-Value="_email"
+                                  Label="Email"
+                                  Placeholder="votre@email.com"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Email"
+                                  InputType="InputType.Email" />
+
+                    <MudTextField @bind-Value="_password"
+                                  Label="Mot de passe"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                  OnAdornmentClick="() => _showPassword = !_showPassword"
+                                  InputType="@(_showPassword ? InputType.Text : InputType.Password)" />
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                               StartIcon="@(_isConnecting ? null : Icons.Material.Filled.Login)"
+                               OnClick="SignIn" Disabled="_isConnecting || string.IsNullOrWhiteSpace(_email)"
+                               Style="border-radius: 8px; text-transform: none; font-weight: 600; margin-top: 8px;"
+                               FullWidth="true">
+                        @if (_isConnecting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" Color="Color.Inherit" />
+                            <span>Connexion...</span>
+                        }
+                        else
+                        {
+                            <span>Se connecter</span>
+                        }
+                    </MudButton>
+
+                    <MudLink Href="/forgot-password" Typo="Typo.body2" Color="Color.Primary" Style="text-align: center;">
+                        Mot de passe oublie ?
+                    </MudLink>
+                </div>
+            </MudPaper>
+        </div>
+    }
+    else
+    {
+        @* Dashboard *@
+        <div class="dashboard-container">
+            @* Status Cards Row *@
+            <div class="status-cards">
+                <StatusCard Icon="@Icons.Material.Filled.Router"
+                            Title="Box SmartLink"
+                            Value="@(_gateway != null && _gateway.HasGateway ? "Connectee" : "Non configuree")"
+                            ValueColor="@(_gateway != null && _gateway.HasGateway ? "var(--mud-palette-success)" : "var(--mud-palette-warning)")"
+                            Subtitle="@(_gateway?.LastConnection != null ? $"Derniere: {_gateway.LastConnection.Value:dd/MM HH:mm}" : null)"
+                            GradientStart="#4fc3f7" GradientEnd="#0288d1" />
+
+                <StatusCard Icon="@Icons.Material.Filled.Thermostat"
+                            Title="Appareils"
+                            Value="@($"{_deviceCount} actifs")"
+                            Subtitle="@(_deviceData.Any() ? $"{GetHeatingDeviceCount()} en chauffe" : null)"
+                            GradientStart="#66bb6a" GradientEnd="#388e3c" />
+
+                <StatusCard Icon="@Icons.Material.Filled.Bolt"
+                            Title="EcoWatt"
+                            Value="@_ecowattMessage"
+                            ValueColor="@GetEcowattTextColor(_ecowattLevel)"
+                            GradientStart="@GetEcowattGradientStart(_ecowattLevel)"
+                            GradientEnd="@GetEcowattGradientEnd(_ecowattLevel)" />
+
+                @* Auto-refresh indicator *@
+                <MudPaper Elevation="2" Class="pa-3 pa-sm-4" Style="border-radius: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <MudSwitch T="bool" @bind-Value="_autoRefreshEnabled" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Auto-refresh</MudText>
+                            @if (_autoRefreshEnabled)
+                            {
+                                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-success);">
+                                    @_secondsUntilRefresh s
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Desactive</MudText>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+            </div>
+
+            @* Main Content *@
+            <div class="main-content">
+                @* Rooms Panel - Hidden on mobile when room selected *@
+                <MudPaper Elevation="2" Class="@($"rooms-panel {(_selectedRoom != null ? "mobile-hidden" : "")}")">
+                    <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            Mes Pieces
+                            @if (_currentHome != null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="ml-2">
+                                    @Rooms.Count
+                                </MudChip>
+                            }
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="RefreshData" Disabled="IsLoading" />
+                    </div>
+
+                    <div style="flex: 1; overflow-y: auto; padding: 8px;">
+                        @if (IsLoading)
+                        {
+                            <div style="padding: 32px; text-align: center;">
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">Chargement...</MudText>
+                            </div>
+                        }
+                        else if (!Rooms.Any())
+                        {
+                            <div style="padding: 32px; text-align: center;">
+                                <MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Size="Size.Large" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">Aucune piece configuree</MudText>
+                                @if (_currentHome == null)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="mt-1">
+                                        Aucune maison trouvee pour ce compte
+                                    </MudText>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var room in Rooms)
+                            {
+                                var roomDevices = GetRoomDevices(room.Position);
+                                var configuredDevices = room.Devices?.Count ?? 0;
+                                var hasLiveData = roomDevices.Any();
+                                var avgTemp = hasLiveData ? roomDevices.Average(d => d.Ambient) : 0;
+                                var avgSetpoint = hasLiveData ? roomDevices.Average(d => d.Setpoint) : room.Settings.StandardValue;
+                                var deviceCount = hasLiveData ? roomDevices.Count : configuredDevices;
+
+                                <RoomCard Room="room"
+                                          IsSelected="_selectedRoom?.Position == room.Position"
+                                          HasLiveData="hasLiveData"
+                                          DeviceCount="deviceCount"
+                                          AverageTemperature="avgTemp"
+                                          AverageSetpoint="avgSetpoint"
+                                          OnClick="@(() => SelectRoom(room))" />
+                            }
+                        }
+                    </div>
+                </MudPaper>
+
+                @* Room Detail / Quick Actions Panel *@
+                <MudPaper Elevation="2" Class="detail-panel">
+                    @if (_selectedRoom != null)
+                    {
+                        var roomDevices = GetRoomDevices(_selectedRoom.Position);
+                        var configuredAccessories = _selectedRoom.Accessories;
+                        var hasLiveData = roomDevices.Any();
+                        var avgTemp = hasLiveData ? roomDevices.Average(d => d.Ambient) : 0;
+                        var avgSetpoint = hasLiveData ? roomDevices.Average(d => d.Setpoint) : _selectedRoom.Settings.StandardValue;
+
+                        <div style="padding: 12px 16px; background: var(--mud-palette-surface); border-bottom: 1px solid var(--mud-palette-divider); display: flex; align-items: center; gap: 8px;">
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" Size="Size.Small"
+                                           OnClick="() => _selectedRoom = null" />
+                            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Primary" Size="Size.Small" />
+                            <MudText Typo="Typo.subtitle1" Style="flex: 1; font-weight: 600;">@_selectedRoom.Name</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@GetModeColor(_selectedRoom.Settings.Mode)" Variant="Variant.Filled">
+                                @GetModeName(_selectedRoom.Settings.Mode)
+                            </MudChip>
+                        </div>
+
+                        <div class="room-detail-scroll">
+                            <div style="display: flex; flex-direction: column; gap: 20px;">
+                                @* Temperature Display *@
+                                <div style="text-align: center; padding: 16px 0;">
+                                    @if (hasLiveData)
+                                    {
+                                        <MudText Typo="Typo.h2" Style="font-weight: 700; color: var(--mud-palette-primary);">@avgTemp.ToString("F1")°C</MudText>
+                                        <MudText Typo="Typo.body1" Color="Color.Secondary">Temperature actuelle</MudText>
+                                    }
+                                    else if (configuredAccessories.Any())
+                                    {
+                                        <MudText Typo="Typo.h4" Style="font-weight: 600;">@_selectedRoom.Settings.StandardValue.ToString("F1")°C</MudText>
+                                        <MudText Typo="Typo.body1" Color="Color.Warning">Consigne (pas de donnees live)</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h4" Color="Color.Secondary">Aucun appareil</MudText>
+                                        <MudText Typo="Typo.body1" Color="Color.Secondary">dans cette piece</MudText>
+                                    }
+                                </div>
+
+                                @* Devices in room - Live data *@
+                                @if (hasLiveData)
+                                {
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">
+                                            Appareils (@roomDevices.Count) - <span style="color: var(--mud-palette-success);">Donnees live</span>
+                                        </MudText>
+                                        @foreach (var device in roomDevices)
+                                        {
+                                            <DeviceCard Device="device" ShowStats="true" />
+                                        }
+                                    </div>
+
+                                    @* Heating Hours Chart *@
+                                    <HeatingHoursChart Devices="roomDevices" ShowDeviceBreakdown="roomDevices.Count > 1" />
+                                }
+                                else if (_selectedRoom.Accessories.Any())
+                                {
+                                    @* Devices in room - Configured only *@
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">
+                                            Appareils configures (@_selectedRoom.Accessories.Count) - <span style="color: var(--mud-palette-warning);">Hors ligne</span>
+                                        </MudText>
+                                        @foreach (var accessory in _selectedRoom.Accessories)
+                                        {
+                                            <MudPaper Elevation="1" Class="pa-3 mb-2" Style="border-radius: 8px;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <div>
+                                                        <MudText Typo="Typo.body2">@(accessory.Reference ?? accessory.Identifier)</MudText>
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            Type: @GetCategoryName(accessory.Category) | Puissance: @accessory.Power W
+                                                        </MudText>
+                                                    </div>
+                                                    <div style="text-align: right;">
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Hors ligne</MudChip>
+                                                    </div>
+                                                </div>
+                                            </MudPaper>
+                                        }
+                                    </div>
+                                }
+
+                                @* Mode Buttons *@
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Mode de chauffage</MudText>
+                                    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Medium" Style="width: 100%;">
+                                        <MudButton Color="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Stop ? Color.Success : Color.Default)"
+                                                   Variant="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Stop ? Variant.Filled : Variant.Outlined)"
+                                                   OnClick="() => SetRoomModeAsync(_selectedRoom.Position, HeaterMode.Stop)"
+                                                   StartIcon="@Icons.Material.Filled.EnergySavingsLeaf" Style="flex: 1;">Eco</MudButton>
+                                        <MudButton Color="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Manual ? Color.Primary : Color.Default)"
+                                                   Variant="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Manual ? Variant.Filled : Variant.Outlined)"
+                                                   OnClick="() => SetRoomModeAsync(_selectedRoom.Position, HeaterMode.Manual)"
+                                                   StartIcon="@Icons.Material.Filled.WbSunny" Style="flex: 1;">Confort</MudButton>
+                                        <MudButton Color="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Prog ? Color.Error : Color.Default)"
+                                                   Variant="@(_selectedRoom.Settings.Mode == (int)HeaterMode.Prog ? Variant.Filled : Variant.Outlined)"
+                                                   OnClick="() => SetRoomModeAsync(_selectedRoom.Position, HeaterMode.Prog)"
+                                                   StartIcon="@Icons.Material.Filled.LocalFireDepartment" Style="flex: 1;">Prog</MudButton>
+                                    </MudButtonGroup>
+                                </div>
+
+                                @* Temperature Setpoints - Editable *@
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Temperatures de consigne</MudText>
+
+                                    @* Manual Mode - Show slider for direct control *@
+                                    @if (_selectedRoom.Settings.Mode == (int)HeaterMode.Manual)
+                                    {
+                                        <MudPaper Elevation="1" Class="pa-4 mb-3" Style="border-radius: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                <MudText Typo="Typo.body2" Color="Color.Primary">Temperature manuelle</MudText>
+                                                <MudText Typo="Typo.h5" Style="font-weight: 700; color: var(--mud-palette-primary);">
+                                                    @_selectedRoom.Settings.ManualValue.ToString("F1")°C
+                                                </MudText>
+                                            </div>
+                                            <MudSlider T="double" Value="_selectedRoom.Settings.ManualValue"
+                                                       ValueChanged="OnManualTemperatureChanged"
+                                                       Min="5" Max="30" Step="0.5"
+                                                       Color="Color.Primary"
+                                                       Immediate="false">
+                                                <MudText Typo="Typo.caption">5°C</MudText>
+                                                <MudSpacer />
+                                                <MudText Typo="Typo.caption">30°C</MudText>
+                                            </MudSlider>
+                                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                                           OnClick="() => SetManualTemperature(18.0)" Style="flex: 1;">18°</MudButton>
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                                           OnClick="() => SetManualTemperature(19.0)" Style="flex: 1;">19°</MudButton>
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                                           OnClick="() => SetManualTemperature(20.0)" Style="flex: 1;">20°</MudButton>
+                                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                                           OnClick="() => SetManualTemperature(21.0)" Style="flex: 1;">21°</MudButton>
+                                            </div>
+                                        </MudPaper>
+                                    }
+
+                                    <div class="temp-setpoints-grid">
+                                        <MudPaper Elevation="1" Class="pa-3" Style="border-radius: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                <MudText Typo="Typo.caption" Color="Color.Success">Eco</MudText>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Success"
+                                                               OnClick="@(() => OpenTemperatureEditor("eco"))" />
+                                            </div>
+                                            <MudText Typo="Typo.h6" Style="text-align: center;">@_selectedRoom.Settings.EconomyValue.ToString("F1")°C</MudText>
+                                        </MudPaper>
+                                        <MudPaper Elevation="1" Class="pa-3" Style="border-radius: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                <MudText Typo="Typo.caption" Color="Color.Primary">Confort</MudText>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                                               OnClick="@(() => OpenTemperatureEditor("comfort"))" />
+                                            </div>
+                                            <MudText Typo="Typo.h6" Style="text-align: center;">@_selectedRoom.Settings.StandardValue.ToString("F1")°C</MudText>
+                                        </MudPaper>
+                                    </div>
+                                </div>
+
+                                @* Program Mode - Show time slots *@
+                                @if (_selectedRoom.Settings.Mode == (int)HeaterMode.Prog)
+                                {
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Programmation horaire</MudText>
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small"
+                                                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddProgramSlot">
+                                                Ajouter
+                                            </MudButton>
+                                        </div>
+
+                                        @if (_selectedRoom.Programs?.Any() == true)
+                                        {
+                                            @foreach (var program in _selectedRoom.Programs.OrderBy(p => p.StartHour).ThenBy(p => p.StartMinute))
+                                            {
+                                                <MudPaper Elevation="1" Class="pa-3 mb-2" Style="border-radius: 8px;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Success" />
+                                                            <div>
+                                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                                                    @program.StartHour.ToString("D2"):@program.StartMinute.ToString("D2") - @program.EndHour.ToString("D2"):@program.EndMinute.ToString("D2")
+                                                                </MudText>
+                                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                    @GetActiveDaysText(program.ActiveDays) | @GetProgramModeName(program.Mode)
+                                                                </MudText>
+                                                            </div>
+                                                        </div>
+                                                        <div style="display: flex; gap: 4px;">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                                                           OnClick="() => EditProgramSlot(program)" />
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                                           OnClick="() => DeleteProgramSlot(program)" />
+                                                        </div>
+                                                    </div>
+                                                </MudPaper>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudPaper Elevation="1" Class="pa-4" Style="border-radius: 8px; text-align: center;">
+                                                <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" />
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                                                    Aucun creneau programme
+                                                </MudText>
+                                            </MudPaper>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="room-detail-scroll" style="display: flex; flex-direction: column; align-items: center;">
+                            <MudText Typo="Typo.h6" Class="mb-4">Controles rapides</MudText>
+
+                            <div class="quick-actions-grid" style="width: 100%; max-width: 400px;">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large"
+                                           StartIcon="@Icons.Material.Filled.Home" OnClick="SetAllRoomsEco"
+                                           Style="height: 80px; border-radius: 12px;">
+                                    <div style="text-align: center;">
+                                        <div>Tout en Eco</div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Economie d'energie</MudText>
+                                    </div>
+                                </MudButton>
+
+                                <MudButton Variant="@(_currentHome?.VacationReturnDate != null ? Variant.Filled : Variant.Outlined)"
+                                           Color="@(_currentHome?.VacationReturnDate != null ? Color.Warning : Color.Default)" Size="Size.Large"
+                                           StartIcon="@Icons.Material.Filled.FlightTakeoff" OnClick="ToggleVacationMode"
+                                           Style="height: 80px; border-radius: 12px;">
+                                    <div style="text-align: center;">
+                                        <div>Mode Vacances</div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(_currentHome?.VacationReturnDate != null ? $"Retour: {_currentHome.VacationReturnDate:dd/MM}" : "Desactive")
+                                        </MudText>
+                                    </div>
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Large"
+                                           StartIcon="@Icons.Material.Filled.Assessment" OnClick="RunDiagnostics"
+                                           Disabled="_isRunningDiagnostics"
+                                           Style="height: 80px; border-radius: 12px;">
+                                    <div style="text-align: center;">
+                                        @if (_isRunningDiagnostics)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        }
+                                        else
+                                        {
+                                            <div>Diagnostic</div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Tester connexion</MudText>
+                                        }
+                                    </div>
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large"
+                                           StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshData"
+                                           Disabled="IsLoading"
+                                           Style="height: 80px; border-radius: 12px;">
+                                    <div style="text-align: center;">
+                                        @if (IsLoading)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        }
+                                        else
+                                        {
+                                            <div>Actualiser</div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Mettre a jour</MudText>
+                                        }
+                                    </div>
+                                </MudButton>
+                            </div>
+
+                            @* Consumption Stats *@
+                            <div style="margin-top: 24px; width: 100%; max-width: 400px;">
+                                <ConsumptionStatsCard Area="@GetTotalArea()"
+                                                      EcoSetpoint="@GetAverageEcoSetpoint()"
+                                                      ComfortSetpoint="@GetAverageComfortSetpoint()"
+                                                      ZipCode="@(_currentHome?.Location?.ZipCode ?? "")" />
+                            </div>
+
+                            @* Global Heating Hours *@
+                            @if (_deviceData.Any())
+                            {
+                                <div style="margin-top: 16px; width: 100%; max-width: 400px;">
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Statistiques globales</MudText>
+                                    <HeatingHoursChart Devices="_deviceData" ShowDeviceBreakdown="false" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            </div>
+        </div>
+    }
+</div>
+
+<footer style="position: fixed; bottom: 0; left: 0; right: 0; padding: 8px 16px; background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%); text-align: center; z-index: 1000;">
+    <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">
+        Developed by <a href="https://github.com/0xZunia" target="_blank" style="color: #4fc3f7; text-decoration: none; font-weight: bold;">Reyan CARLIER</a>
+    </MudText>
+</footer>
+
+@* Temperature Edit Dialog *@
+<MudDialog @bind-Visible="_showTemperatureDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Thermostat" Class="mr-2" />
+            Modifier la temperature @(_editingTemperatureType == "eco" ? "Eco" : "Confort")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <div style="padding: 16px;">
+            <MudText Typo="Typo.h3" Style="text-align: center; font-weight: 700; color: var(--mud-palette-primary);" Class="mb-4">
+                @_editingTemperatureValue.ToString("F1")°C
+            </MudText>
+            <MudSlider T="double" @bind-Value="_editingTemperatureValue"
+                       Min="5" Max="30" Step="0.5"
+                       Color="@(_editingTemperatureType == "eco" ? Color.Success : Color.Primary)">
+                <MudText Typo="Typo.caption">5°C</MudText>
+                <MudSpacer />
+                <MudText Typo="Typo.caption">30°C</MudText>
+            </MudSlider>
+            <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: center;">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="() => _editingTemperatureValue = 15">15°</MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="() => _editingTemperatureValue = 17">17°</MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="() => _editingTemperatureValue = 19">19°</MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="() => _editingTemperatureValue = 21">21°</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showTemperatureDialog = false">Annuler</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveTemperatureEdit" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Enregistrer
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Program Slot Edit Dialog *@
+<MudDialog @bind-Visible="_showProgramDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
+            @(_isNewProgram ? "Ajouter un creneau" : "Modifier le creneau")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_editingProgram != null)
+        {
+            <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                @* Time Selection *@
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Horaires</MudText>
+                    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 4px;">
+                            <MudNumericField T="int" @bind-Value="_editingProgram.StartHour" Label="Heure" Min="0" Max="23"
+                                             Variant="Variant.Outlined" Style="width: 80px;" />
+                            <MudNumericField T="int" @bind-Value="_editingProgram.StartMinute" Label="Min" Min="0" Max="59" Step="15"
+                                             Variant="Variant.Outlined" Style="width: 80px;" />
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Color="Color.Secondary" />
+                        <div style="display: flex; gap: 4px;">
+                            <MudNumericField T="int" @bind-Value="_editingProgram.EndHour" Label="Heure" Min="0" Max="23"
+                                             Variant="Variant.Outlined" Style="width: 80px;" />
+                            <MudNumericField T="int" @bind-Value="_editingProgram.EndMinute" Label="Min" Min="0" Max="59" Step="15"
+                                             Variant="Variant.Outlined" Style="width: 80px;" />
+                        </div>
+                    </div>
+                </div>
+
+                @* Day Selection *@
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Jours actifs</MudText>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <MudButton Variant="@(IsDayActive(1) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(1) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(1)">Lun</MudButton>
+                        <MudButton Variant="@(IsDayActive(2) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(2) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(2)">Mar</MudButton>
+                        <MudButton Variant="@(IsDayActive(4) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(4) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(4)">Mer</MudButton>
+                        <MudButton Variant="@(IsDayActive(8) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(8) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(8)">Jeu</MudButton>
+                        <MudButton Variant="@(IsDayActive(16) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(16) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(16)">Ven</MudButton>
+                        <MudButton Variant="@(IsDayActive(32) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(32) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(32)">Sam</MudButton>
+                        <MudButton Variant="@(IsDayActive(64) ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(IsDayActive(64) ? Color.Primary : Color.Default)"
+                                   Size="Size.Small" OnClick="() => ToggleProgramDay(64)">Dim</MudButton>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _editingProgram.ActiveDays = 31">Semaine</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _editingProgram.ActiveDays = 96">Week-end</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _editingProgram.ActiveDays = 127">Tous</MudButton>
+                    </div>
+                </div>
+
+                @* Mode Selection *@
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Mode de chauffe</MudText>
+                    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Medium" Style="width: 100%;">
+                        <MudButton Color="@(_editingProgram.Mode == 1 ? Color.Success : Color.Default)"
+                                   Variant="@(_editingProgram.Mode == 1 ? Variant.Filled : Variant.Outlined)"
+                                   OnClick="() => _editingProgram.Mode = 1" Style="flex: 1;">Standard</MudButton>
+                        <MudButton Color="@(_editingProgram.Mode == 2 ? Color.Warning : Color.Default)"
+                                   Variant="@(_editingProgram.Mode == 2 ? Variant.Filled : Variant.Outlined)"
+                                   OnClick="() => _editingProgram.Mode = 2" Style="flex: 1;">Boost</MudButton>
+                    </MudButtonGroup>
+                </div>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showProgramDialog = false">Annuler</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProgramSlot" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Enregistrer
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1976d2",
+            Secondary = "#9c27b0",
+            Info = "#0288d1",
+            Success = "#2e7d32",
+            Warning = "#ed6c02",
+            Error = "#d32f2f",
+            Background = "#f5f5f5",
+            Surface = "#ffffff",
+            AppbarBackground = "#1a1a2e"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#4fc3f7",
+            Secondary = "#ce93d8",
+            Info = "#29b6f6",
+            Success = "#66bb6a",
+            Warning = "#ffa726",
+            Error = "#f44336",
+            Surface = "#1e1e2d",
+            Background = "#121212",
+            BackgroundGray = "#2d2d3d",
+            AppbarBackground = "#1a1a2e"
+        }
+    };
+
+    private bool _isDarkMode = true;
+    private bool IsAuthenticated { get; set; }
+    private bool IsLoading { get; set; } = true;
+
+    // API Data
+    private string? _currentHomeId;
+    private HomeDto? _currentHome;
+    private GatewayDto? _gateway;
+    private List<DeviceDataDto> _deviceData = [];
+    private EcowattDto? _ecowattData;
+    private int _ecowattLevel = 1;
+    private string _ecowattMessage = "Normal";
+    private int _deviceCount;
+
+    // Computed from HomeDto
+    private List<RoomDto> Rooms => _currentHome?.Rooms ?? [];
+    private RoomDto? _selectedRoom;
+
+    // Login state
+    private string _email = "";
+    private string _password = "";
+    private bool _showPassword;
+    private bool _isConnecting;
+    private string? _errorMessage;
+
+    // Diagnostics
+    private bool _isRunningDiagnostics;
+
+    // Temperature editing
+    private bool _showTemperatureDialog;
+    private string _editingTemperatureType = "";
+    private double _editingTemperatureValue;
+    private bool _isSaving;
+
+    // Program editing
+    private bool _showProgramDialog;
+    private ProgramRangeDto? _editingProgram;
+    private bool _isNewProgram;
+
+    // Auto-refresh
+    private bool _autoRefreshEnabled;
+    private int _secondsUntilRefresh = 60;
+    private System.Threading.Timer? _refreshTimer;
+    private const int RefreshIntervalSeconds = 60;
+
+    private void ToggleTheme() => _isDarkMode = !_isDarkMode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsAuthenticated = await AuthService.IsAuthenticatedAsync();
+
+        if (IsAuthenticated)
+        {
+            await LoadDashboardData();
+            StartAutoRefreshTimer();
+        }
+
+        IsLoading = false;
+    }
+
+    private void StartAutoRefreshTimer()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (_autoRefreshEnabled && IsAuthenticated && !IsLoading)
+            {
+                _secondsUntilRefresh--;
+                if (_secondsUntilRefresh <= 0)
+                {
+                    _secondsUntilRefresh = RefreshIntervalSeconds;
+                    await InvokeAsync(async () =>
+                    {
+                        await LoadDashboardData();
+                        StateHasChanged();
+                    });
+                }
+                else
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            else
+            {
+                _secondsUntilRefresh = RefreshIntervalSeconds;
+            }
+        }, null, 1000, 1000);
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+
+    private async Task SignIn()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+            return;
+
+        _isConnecting = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AuthService.SignInAsync(_email, _password);
+            if (result.IsSuccess)
+            {
+                IsAuthenticated = true;
+                Snackbar.Add("Connexion reussie", Severity.Success);
+
+                // Get home ID from invitation if present
+                if (result.Data?.Invitation?.HomeId != null)
+                {
+                    _currentHomeId = result.Data.Invitation.HomeId;
+                    await SessionStorage.SetAsync("current_home_id", _currentHomeId);
+                }
+
+                await LoadDashboardData();
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Identifiants incorrects";
+                Snackbar.Add(_errorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Erreur de connexion: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isConnecting = false;
+        }
+    }
+
+    private async Task SignOut()
+    {
+        await AuthService.SignOutAsync();
+        IsAuthenticated = false;
+        _currentHome = null;
+        _currentHomeId = null;
+        _gateway = null;
+        _deviceData = [];
+        _selectedRoom = null;
+        _email = "";
+        _password = "";
+        _errorMessage = null;
+        Snackbar.Add("Deconnexion reussie", Severity.Info);
+    }
+
+    private async Task LoadDashboardData()
+    {
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // 1. Get current home ID from storage
+            _currentHomeId = await SessionStorage.GetAsync<string>("current_home_id");
+
+            // 2. If no home ID, try to get invitations to find one
+            if (string.IsNullOrEmpty(_currentHomeId))
+            {
+                var invitationsResult = await ApiClient.FetchMyInvitationsAsync();
+                if (invitationsResult.IsSuccess && invitationsResult.Data?.Any() == true)
+                {
+                    var firstHome = invitationsResult.Data.FirstOrDefault(i => !string.IsNullOrEmpty(i.HomeId));
+                    if (firstHome != null)
+                    {
+                        _currentHomeId = firstHome.HomeId;
+                        await SessionStorage.SetAsync("current_home_id", _currentHomeId);
+                    }
+                }
+            }
+
+            // 3. Fetch home data
+            if (!string.IsNullOrEmpty(_currentHomeId))
+            {
+                // Fetch home details
+                var homeResult = await ApiClient.FetchHomeAsync(_currentHomeId);
+                if (homeResult.IsSuccess && homeResult.Data != null)
+                {
+                    _currentHome = homeResult.Data;
+                    Snackbar.Add($"Maison chargee: {_currentHome.Rooms.Count} pieces", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add($"Erreur chargement maison: {homeResult.ErrorMessage}", Severity.Warning);
+                }
+
+                // Fetch gateway info
+                var gatewayResult = await ApiClient.FetchGatewayAsync(_currentHomeId);
+                if (gatewayResult.IsSuccess)
+                {
+                    _gateway = gatewayResult.Data;
+                }
+
+                // Fetch device data (temperatures, status)
+                var deviceResult = await ApiClient.FetchDeviceDataAsync(_currentHomeId);
+                if (deviceResult.IsSuccess && deviceResult.Data != null)
+                {
+                    _deviceData = deviceResult.Data;
+                    _deviceCount = _deviceData.Count;
+                    if (_deviceCount > 0)
+                    {
+                        Snackbar.Add($"Appareils: {_deviceCount} avec donnees live", Severity.Success);
+                    }
+                }
+                else
+                {
+                    // Fallback: count configured devices from rooms
+                    _deviceCount = _currentHome?.Rooms.Sum(r => r.Devices?.Count ?? 0) ?? 0;
+                    if (_deviceCount > 0)
+                    {
+                        Snackbar.Add($"Appareils: {_deviceCount} configures (pas de donnees live)", Severity.Warning);
+                    }
+                    else
+                    {
+                        Snackbar.Add($"Erreur appareils: {deviceResult.ErrorMessage}", Severity.Warning);
+                    }
+                }
+
+                // Fetch gateway info
+                if (!gatewayResult.IsSuccess)
+                {
+                    Snackbar.Add($"Erreur gateway: {gatewayResult.ErrorMessage}", Severity.Warning);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Aucune maison associee a ce compte", Severity.Warning);
+            }
+
+            // 4. Fetch EcoWatt data (doesn't require home ID)
+            await LoadEcowattData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadEcowattData()
+    {
+        try
+        {
+            var ecowattResult = await ApiClient.FetchEcowattReportsAsync();
+            if (ecowattResult.IsSuccess && ecowattResult.Data != null)
+            {
+                _ecowattData = ecowattResult.Data;
+                _ecowattLevel = _ecowattData.Current;
+                _ecowattMessage = _ecowattLevel switch
+                {
+                    1 => "Pas d'alerte",
+                    2 => "Situation tendue",
+                    3 => "Tres tendu",
+                    _ => "Normal"
+                };
+            }
+        }
+        catch
+        {
+            // EcoWatt is optional, don't fail if unavailable
+            _ecowattLevel = 0;
+            _ecowattMessage = "Indisponible";
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadDashboardData();
+        Snackbar.Add("Donnees actualisees", Severity.Success);
+    }
+
+    private void SelectRoom(RoomDto room)
+    {
+        _selectedRoom = _selectedRoom?.Position == room.Position ? null : room;
+    }
+
+    private List<DeviceDataDto> GetRoomDevices(int roomPosition)
+    {
+        return _deviceData.Where(d => d.RoomId == roomPosition).ToList();
+    }
+
+    private async Task SetRoomModeAsync(int roomPosition, HeaterMode mode)
+    {
+        if (string.IsNullOrEmpty(_currentHomeId)) return;
+
+        try
+        {
+            // Send geofence action to change mode
+            var result = await ApiClient.SendGeofenceActionAsync(
+                _currentHomeId,
+                (ProximityAction)(int)mode,
+                $"Mode change to {mode}",
+                1 << roomPosition // Room mask for specific room
+            );
+
+            if (result.IsSuccess)
+            {
+                // Update local state
+                var room = Rooms.FirstOrDefault(r => r.Position == roomPosition);
+                if (room != null)
+                {
+                    room.Settings.Mode = (int)mode;
+                }
+                Snackbar.Add($"Mode {GetModeName((int)mode)} active", Severity.Success);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Erreur: {result.ErrorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SetAllRoomsEco()
+    {
+        if (string.IsNullOrEmpty(_currentHomeId)) return;
+
+        try
+        {
+            var result = await ApiClient.SendGeofenceActionAsync(
+                _currentHomeId,
+                ProximityAction.Stop, // Eco mode
+                "All rooms to eco",
+                255 // All rooms
+            );
+
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Toutes les pieces en mode Eco", Severity.Success);
+                await RefreshData();
+            }
+            else
+            {
+                Snackbar.Add($"Erreur: {result.ErrorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ToggleVacationMode()
+    {
+        Snackbar.Add("Fonctionnalite mode vacances a implementer", Severity.Info);
+    }
+
+    private async Task RunDiagnostics()
+    {
+        if (string.IsNullOrEmpty(_currentHomeId)) return;
+
+        _isRunningDiagnostics = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiClient.SendDiagnosysRequestAsync(_currentHomeId);
+            if (result.IsSuccess && result.Data != null)
+            {
+                Snackbar.Add($"Diagnostic lance (ID: {result.Data})", Severity.Info);
+
+                // Wait a bit and fetch results
+                await Task.Delay(3000);
+                var diagResult = await ApiClient.FetchDiagnosysAsync(result.Data);
+                if (diagResult.IsSuccess && diagResult.Data != null)
+                {
+                    var status = diagResult.Data.IsAcknowledge ? "OK" : "En attente";
+                    Snackbar.Add($"Diagnostic: {status} - {diagResult.Data.DeviceStatus.Count} appareils", Severity.Success);
+                }
+            }
+            else
+            {
+                Snackbar.Add($"Erreur diagnostic: {result.ErrorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isRunningDiagnostics = false;
+        }
+    }
+
+    private string GetRoomStyle(RoomDto room)
+    {
+        var isSelected = _selectedRoom?.Position == room.Position;
+        var baseStyle = "border-radius: 12px; cursor: pointer; transition: all 0.2s; ";
+
+        if (isSelected)
+        {
+            return baseStyle + "background: rgba(79, 195, 247, 0.2); border-left: 3px solid #4fc3f7;";
+        }
+
+        return baseStyle + "background: var(--mud-palette-surface); border-left: 3px solid transparent;";
+    }
+
+    private string GetModeName(int mode) => mode switch
+    {
+        0 => "Auto",
+        1 => "Arret",
+        2 => "Hors-gel",
+        3 => "Manuel",
+        4 => "Programme",
+        _ => $"Mode {mode}"
+    };
+
+    private Color GetModeColor(int mode) => mode switch
+    {
+        0 => Color.Info,
+        1 => Color.Error,
+        2 => Color.Warning,
+        3 => Color.Primary,
+        4 => Color.Success,
+        _ => Color.Default
+    };
+
+    private Color GetEcowattColor(int level) => level switch
+    {
+        1 => Color.Success,
+        2 => Color.Warning,
+        3 => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetEcowattGradient(int level) => level switch
+    {
+        1 => "#66bb6a 0%, #388e3c 100%",
+        2 => "#ffa726 0%, #f57c00 100%",
+        3 => "#f44336 0%, #d32f2f 100%",
+        _ => "#9e9e9e 0%, #616161 100%"
+    };
+
+    private string GetEcowattTextColor(int level) => level switch
+    {
+        1 => "var(--mud-palette-success)",
+        2 => "var(--mud-palette-warning)",
+        3 => "var(--mud-palette-error)",
+        _ => "inherit"
+    };
+
+    private string GetCategoryName(int category) => category switch
+    {
+        1 => "Radiateur",
+        2 => "Seche-serviettes",
+        3 => "Cheminee",
+        4 => "Gateway",
+        5 => "Module",
+        6 => "Chaudiere",
+        _ => "Inconnu"
+    };
+
+    /// <summary>
+    /// Determines heating state based on temperature comparison.
+    /// State field from API may be a status code, but actual heating depends on ambient vs setpoint.
+    /// </summary>
+    private string GetHeatingStateText(DeviceDataDto device)
+    {
+        // Mode 1 = Stop, Mode 2 = Antifreeze (minimal heating)
+        if (device.Mode == 1)
+            return "Arret";
+
+        if (device.Mode == 2)
+            return "Hors-gel";
+
+        // For Manual (3) and Program (4) modes, check if heating is needed
+        // Heater is heating when ambient temperature is below setpoint
+        var tempDiff = device.Setpoint - device.Ambient;
+
+        if (tempDiff > 0.5)
+            return $"En chauffe (+{tempDiff:F1}°)";
+        else if (tempDiff > 0)
+            return "Maintien";
+        else
+            return "Temperature atteinte";
+    }
+
+    // Helper methods for status cards
+    private int GetHeatingDeviceCount()
+    {
+        return _deviceData.Count(d => d.Mode >= 3 && d.Setpoint > d.Ambient);
+    }
+
+    private string GetEcowattGradientStart(int level) => level switch
+    {
+        1 => "#66bb6a",
+        2 => "#ffa726",
+        3 => "#f44336",
+        _ => "#9e9e9e"
+    };
+
+    private string GetEcowattGradientEnd(int level) => level switch
+    {
+        1 => "#388e3c",
+        2 => "#f57c00",
+        3 => "#d32f2f",
+        _ => "#616161"
+    };
+
+    // Helper methods for consumption stats
+    private int GetTotalArea() => Rooms.Sum(r => r.Area);
+
+    private double GetAverageEcoSetpoint() =>
+        Rooms.Any() ? Rooms.Average(r => r.Settings.EconomyValue) : 17.0;
+
+    private double GetAverageComfortSetpoint() =>
+        Rooms.Any() ? Rooms.Average(r => r.Settings.StandardValue) : 20.0;
+
+    private string GetProgramModeName(int mode) => mode switch
+    {
+        1 => "Standard",
+        2 => "Boost",
+        3 => "Ventilation",
+        _ => "Standard"
+    };
+
+    private string GetActiveDaysText(int activeDays)
+    {
+        if (activeDays == 127) return "Tous les jours";
+        if (activeDays == 31) return "Lun-Ven";
+        if (activeDays == 96) return "Sam-Dim";
+
+        var days = new List<string>();
+        if ((activeDays & 1) != 0) days.Add("Lun");
+        if ((activeDays & 2) != 0) days.Add("Mar");
+        if ((activeDays & 4) != 0) days.Add("Mer");
+        if ((activeDays & 8) != 0) days.Add("Jeu");
+        if ((activeDays & 16) != 0) days.Add("Ven");
+        if ((activeDays & 32) != 0) days.Add("Sam");
+        if ((activeDays & 64) != 0) days.Add("Dim");
+
+        return days.Any() ? string.Join(", ", days) : "Aucun jour";
+    }
+
+    // ==========================================
+    // Temperature Control Methods
+    // ==========================================
+
+    private async Task OnManualTemperatureChanged(double newValue)
+    {
+        if (_selectedRoom == null || _currentHome == null) return;
+
+        _selectedRoom.Settings.ManualValue = newValue;
+        await SaveHomeChangesAsync();
+    }
+
+    private async Task SetManualTemperature(double temperature)
+    {
+        if (_selectedRoom == null || _currentHome == null) return;
+
+        _selectedRoom.Settings.ManualValue = temperature;
+        StateHasChanged();
+        await SaveHomeChangesAsync();
+    }
+
+    private void OpenTemperatureEditor(string tempType)
+    {
+        if (_selectedRoom == null) return;
+
+        _editingTemperatureType = tempType;
+        _editingTemperatureValue = tempType == "eco"
+            ? _selectedRoom.Settings.EconomyValue
+            : _selectedRoom.Settings.StandardValue;
+        _showTemperatureDialog = true;
+    }
+
+    private async Task SaveTemperatureEdit()
+    {
+        if (_selectedRoom == null || _currentHome == null) return;
+
+        if (_editingTemperatureType == "eco")
+        {
+            _selectedRoom.Settings.EconomyValue = _editingTemperatureValue;
+        }
+        else
+        {
+            _selectedRoom.Settings.StandardValue = _editingTemperatureValue;
+        }
+
+        _showTemperatureDialog = false;
+        await SaveHomeChangesAsync();
+    }
+
+    private async Task SaveHomeChangesAsync()
+    {
+        if (_currentHome == null) return;
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            var result = await ApiClient.SaveHomeAsync(_currentHome);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Modifications enregistrees", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Erreur: {result.ErrorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    // ==========================================
+    // Program Slot Methods
+    // ==========================================
+
+    private void AddProgramSlot()
+    {
+        if (_selectedRoom == null) return;
+
+        _editingProgram = new ProgramRangeDto
+        {
+            Tag = (_selectedRoom.Programs?.Count ?? 0) + 1,
+            Mode = 1, // Standard
+            StartHour = 7,
+            StartMinute = 0,
+            EndHour = 9,
+            EndMinute = 0,
+            ActiveDays = 31 // Mon-Fri
+        };
+        _isNewProgram = true;
+        _showProgramDialog = true;
+    }
+
+    private void EditProgramSlot(ProgramRangeDto program)
+    {
+        _editingProgram = new ProgramRangeDto
+        {
+            Tag = program.Tag,
+            Mode = program.Mode,
+            StartHour = program.StartHour,
+            StartMinute = program.StartMinute,
+            EndHour = program.EndHour,
+            EndMinute = program.EndMinute,
+            ActiveDays = program.ActiveDays
+        };
+        _isNewProgram = false;
+        _showProgramDialog = true;
+    }
+
+    private async Task DeleteProgramSlot(ProgramRangeDto program)
+    {
+        if (_selectedRoom?.Programs == null || _currentHome == null) return;
+
+        _selectedRoom.Programs.Remove(program);
+
+        // Re-tag remaining programs
+        for (int i = 0; i < _selectedRoom.Programs.Count; i++)
+        {
+            _selectedRoom.Programs[i].Tag = i + 1;
+        }
+
+        await SaveHomeChangesAsync();
+    }
+
+    private async Task SaveProgramSlot()
+    {
+        if (_selectedRoom == null || _currentHome == null || _editingProgram == null) return;
+
+        _selectedRoom.Programs ??= [];
+
+        if (_isNewProgram)
+        {
+            _selectedRoom.Programs.Add(_editingProgram);
+        }
+        else
+        {
+            var existing = _selectedRoom.Programs.FirstOrDefault(p => p.Tag == _editingProgram.Tag);
+            if (existing != null)
+            {
+                existing.Mode = _editingProgram.Mode;
+                existing.StartHour = _editingProgram.StartHour;
+                existing.StartMinute = _editingProgram.StartMinute;
+                existing.EndHour = _editingProgram.EndHour;
+                existing.EndMinute = _editingProgram.EndMinute;
+                existing.ActiveDays = _editingProgram.ActiveDays;
+            }
+        }
+
+        _showProgramDialog = false;
+        await SaveHomeChangesAsync();
+    }
+
+    private void ToggleProgramDay(int dayFlag)
+    {
+        if (_editingProgram == null) return;
+
+        if ((_editingProgram.ActiveDays & dayFlag) != 0)
+        {
+            _editingProgram.ActiveDays &= ~dayFlag;
+        }
+        else
+        {
+            _editingProgram.ActiveDays |= dayFlag;
+        }
+    }
+
+    private bool IsDayActive(int dayFlag)
+    {
+        return _editingProgram != null && (_editingProgram.ActiveDays & dayFlag) != 0;
+    }
+}

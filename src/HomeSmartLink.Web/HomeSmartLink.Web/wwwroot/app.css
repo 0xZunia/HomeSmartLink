@@ -1,0 +1,218 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #121212;
+    overflow: hidden;
+}
+
+#blazor-error-ui {
+    background: linear-gradient(90deg, #d32f2f 0%, #f44336 100%);
+    bottom: 0;
+    box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.3);
+    display: none;
+    left: 0;
+    padding: 0.8rem 1.5rem;
+    position: fixed;
+    right: 0;
+    z-index: 1000;
+    color: white;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.6rem;
+    font-weight: bold;
+}
+
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem;
+    color: white;
+    border-radius: 8px;
+    margin: 16px;
+}
+
+.blazor-error-boundary::after {
+    content: "Une erreur s'est produite.";
+}
+
+/* Override for MudBlazor */
+.mud-input-slot > input::placeholder {
+    opacity: 0.5;
+}
+
+/* ==========================================
+   Responsive Layout Classes
+   ========================================== */
+
+/* Main dashboard container */
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    gap: 16px;
+}
+
+/* Status cards grid */
+.status-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+/* Main content area */
+.main-content {
+    display: flex;
+    flex: 1;
+    gap: 16px;
+    min-height: 0;
+}
+
+/* Rooms panel */
+.rooms-panel {
+    width: 380px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Detail panel */
+.detail-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* Mobile: Stack everything vertically */
+@media (max-width: 900px) {
+    .dashboard-container {
+        padding: 8px;
+        gap: 8px;
+        padding-bottom: 50px;
+    }
+
+    .status-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .main-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .rooms-panel {
+        width: 100%;
+        min-width: unset;
+        max-height: none;
+    }
+
+    .detail-panel {
+        width: 100%;
+    }
+
+    /* Hide rooms list when a room is selected on mobile */
+    .rooms-panel.mobile-hidden {
+        display: none;
+    }
+
+    /* Show detail panel full width on mobile */
+    .detail-panel.mobile-visible {
+        display: flex;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 4px;
+        gap: 6px;
+    }
+
+    .status-cards {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+}
+
+/* Status card responsive */
+.status-card-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.status-card-icon {
+    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 600px) {
+    .status-card-icon {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 10px;
+    }
+
+    .status-card-icon .mud-icon-root {
+        font-size: 22px !important;
+    }
+}
+
+/* Quick actions grid */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 600px) {
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+/* Room detail scrollable area */
+.room-detail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 600px) {
+    .room-detail-scroll {
+        padding: 12px;
+    }
+}
+
+/* Temperature setpoints grid */
+.temp-setpoints-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 400px) {
+    .temp-setpoints-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
